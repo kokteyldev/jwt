@@ -94,7 +94,15 @@ encode(Alg, ClaimsSet, Expiration, Key) ->
 %%
 %% @end
 decode(Token, Key) ->
-    decode(Token, Key, #{}).
+    decode(Token, Key, #{});
+decode(Token, Keys) when is_list(Keys)  ->
+    result(reduce_while(fun(F, Acc) -> apply(F, [Acc]) end, #{token => Token, jwks := Keys}, [
+        fun split_token/1,
+        fun decode_jwt/1,
+        fun get_jwks_key/1,
+        fun check_signature/1,
+        fun check_expired/1
+    ])).
 
 % When there are multiple issuers and keys are on a per issuer bases
 % then apply those keys instead
@@ -173,6 +181,14 @@ get_key(#{claims_json := Claims} = Context, DefaultKey, IssuerKeyMapping) ->
     Issuer = maps:get(<<"iss">>, Claims, undefined),
     Key = maps:get(Issuer, IssuerKeyMapping, DefaultKey),
     {cont, maps:merge(Context, #{key => Key})}.
+
+get_jwks_key(#{header_json := Header, jwks := Keys} = Context) ->
+    KeyId = maps:get(<<"kid">>, Header, undefined),
+    FilteredKeys = lists:filter(fun(KeyMap) -> maps:get(<<"kid">>, KeyMap, undefined) == KeyId end, Keys),
+    case FilteredKeys of
+        [Key] -> {cont, maps:merge(Context, #{key => Key})};
+        _ -> {halt, {error, invalid_keys}}
+    end.
 
 %% @private
 check_signature(#{
