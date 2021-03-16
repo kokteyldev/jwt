@@ -93,7 +93,7 @@ encode(Alg, ClaimsSet, Expiration, Key) ->
 %% </ul>
 %%
 %% @end
-decode(Token, Key) ->
+decode(Token, Key) when is_binary(Key) ->
     decode(Token, Key, #{});
 decode(Token, Keys) when is_list(Keys)  ->
     result(reduce_while(fun(F, Acc) -> apply(F, [Acc]) end, #{token => Token, jwks => Keys}, [
