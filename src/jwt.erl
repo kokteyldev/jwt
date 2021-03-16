@@ -96,7 +96,7 @@ encode(Alg, ClaimsSet, Expiration, Key) ->
 decode(Token, Key) ->
     decode(Token, Key, #{});
 decode(Token, Keys) when is_list(Keys)  ->
-    result(reduce_while(fun(F, Acc) -> apply(F, [Acc]) end, #{token => Token, jwks := Keys}, [
+    result(reduce_while(fun(F, Acc) -> apply(F, [Acc]) end, #{token => Token, jwks => Keys}, [
         fun split_token/1,
         fun decode_jwt/1,
         fun get_jwks_key/1,
