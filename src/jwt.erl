@@ -95,7 +95,7 @@ encode(Alg, ClaimsSet, Expiration, Key) ->
 %% @end
 decode(Token, Key) when is_binary(Key) ->
     decode(Token, Key, #{});
-decode(Token, Keys) when is_list(Keys)  ->
+decode(Token, Keys) when is_map(Keys)  ->
     result(reduce_while(fun(F, Acc) -> apply(F, [Acc]) end, #{token => Token, jwks => Keys}, [
         fun split_token/1,
         fun decode_jwt/1,
@@ -184,10 +184,9 @@ get_key(#{claims_json := Claims} = Context, DefaultKey, IssuerKeyMapping) ->
 
 get_jwks_key(#{header_json := Header, jwks := Keys} = Context) ->
     KeyId = maps:get(<<"kid">>, Header, undefined),
-    FilteredKeys = lists:filter(fun(KeyMap) -> maps:get(<<"kid">>, KeyMap, undefined) == KeyId end, Keys),
-    case FilteredKeys of
-        [Key] -> {cont, maps:merge(Context, #{key => Key})};
-        _ -> {halt, {error, invalid_keys}}
+    case jwk:decode(KeyId, Keys) of
+        {ok, Key} ->{cont, maps:merge(Context, #{key => Key})};
+        {error, Reason} -> {halt, {error, Reason}}
     end.
 
 %% @private
